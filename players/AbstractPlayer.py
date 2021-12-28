@@ -117,3 +117,50 @@ class AbstractPlayer:
             return self.check_next_mill(position, p, board)
         else:
             return False
+
+    def is_incomplete_mill(self, position, board=None):
+        if board is None:
+            board = self.board
+
+        if position < 0 or position > 23:
+            return False
+        p = int(board[position])
+
+        incomplete_mills = 0
+
+        adjacent_mills = [
+            [[1, 2], [3, 5]],
+            [[0, 2], [9, 17]],
+            [[0, 1], [4, 7]],
+            [[0, 5], [11, 19]],
+            [[2, 7], [12, 20]],
+            [[0, 3], [6, 7]],
+            [[5, 7], 14, 22],
+            [[2, 4], [5, 6]],
+            [[9, 10], [11, 13]],
+            [[8, 10], [1, 17]],
+            [[8, 9], [12, 15]],
+            [[3, 19], [8, 13]],
+            [[10, 15], [4, 20]],
+            [[8, 11], [14, 15]],
+            [[13, 15], [6, 22]],
+            [[10, 12], [13, 14]],
+            [[17, 18], [19, 21]],
+            [[16, 18], [1, 9]],
+            [[16, 17], [20, 23]],
+            [[16, 21], [3, 11]],
+            [[18, 23], [4, 12]],
+            [[16, 19], [22, 23]],
+            [[21, 23], [6, 14]],
+            [[18, 20], [21, 22]]
+        ]
+
+        incomplete_mill_pos1 = adjacent_mills[position][0][0]
+        incomplete_mill_pos2 = adjacent_mills[position][0][1]
+        incomplete_mill_pos3 = adjacent_mills[position][1][0]
+        incomplete_mill_pos4 = adjacent_mills[position][1][1]
+
+        incomplete_mill1 = (board[incomplete_mill_pos1] == p + board[incomplete_mill_pos2] == p) == 1
+        incomplete_mill2 = (board[incomplete_mill_pos3] == p + board[incomplete_mill_pos4] == p) == 1
+
+        return incomplete_mill1 + incomplete_mill2
