@@ -18,6 +18,7 @@ class Player(AbstractPlayer):
         self.rivalIncompleteMills = 0
         self.playerPositions = np.empty(9, dtype=int)
         self.rivalPositions = np.empty(9, dtype=int)
+        self.initialState = {}
 
 
     def set_game_params(self, board):
@@ -31,6 +32,10 @@ class Player(AbstractPlayer):
         for i in self.playerPositions:
             self.playerPositions[i] = -1
             self.rivalPositions[i] = -1
+        self.currState = {"Turn": True, "Board": self.board, "PlayerPositions": self.playerPositions,
+                             "RivalPositions": self.rivalPositions, "PlayerSoldiersToPlace": 9,
+                             "RivalSoldiersToPlace": 9, "PlayerSoldiersRemain": 0, "RivalSoldiersRemain": 0,
+                             "PlayerIncompMills": 0, "RivalIncompMills": 0, "Direction": None}
         # TODO: erase the following line and implement this function.
         raise NotImplementedError
 
@@ -69,134 +74,128 @@ class Player(AbstractPlayer):
 
     ########## helper functions in class ##########
     # TODO: add here helper functions in class, if needed
-    def state_parser(self, state):
-        for i in state:
-            yield i
 
-    # def succ_phase1_player(self, state):
+    def succ_phase1_player(self, state):
+        for pos in range(24):
+            if state["Board"][pos] == 0:
+                state["Board"] = 1
+                state["PlayerPositions"][9 - state["PlayerSoldierToPlace"]] = pos
+                state["PlayerSoldierToPlace"] -= 1
 
-    # def succ_phase1_rival(self,state):
+                state["PlayerSoldiersRemain"] += 1
+                # check incomplete mills
+                if self.is_mill(pos, state["Board"]):
+                    for rival in range(9 - state["RivalSoldiersToPlace"]):
+                        if state["RivalPositions"][rival] >= 0:
+                            tmp = state["RivalPositions"][rival]
+                            state["Board"][tmp] = 0
+                            state["RivalPositions"][rival] = -1
+                            state["RivalSoldiersRemain"] -= 1
+                            # check incomplete mills
+                            state["Direction"] = (pos, 9-state["PlayerSoldierToPlace"], tmp)
+                            return state
+                else:
+                    state["Direction"] = (pos, 8-state["PlayerSoldierToPlace"], -1)
+                    return state
 
-    # def succ_phase2_player(self,state):
+    def succ_phase1_rival(self, state):
+        for pos in range(24):
+            if state["Board"][pos] == 0:
+                state["Board"] = 2
+                state["RivalPositions"][9 - state["RivalSoldiersToPlace"]] = pos
+                state["RivalSoldiersToPlace"] -= 1
+                state["RivalSoldiersRemain"] += 1
+                # check incomplete mills
+                if self.is_mill(pos, state["Board"]):
+                    for player in range(9 - state["PlayerSoldiersToPlace"]):
+                        if state["PlayerPositions"][player] >= 0:
+                            tmp = state["PlayerPositions"][player]
+                            state["Board"][tmp] = 0
+                            state["PlayerPositions"][player] = -1
+                            state["PlayerSoldiersRemain"] -= 1
+                            # check incomplete mills
+                            state["Turn"] = not state["Turn"]
+                            state["Direction"] = (pos, 8-state["RivalSoldiersToPlace"], tmp)
+                            return state
+                else:
+                    state["Direction"] = (pos, 8-state["RivalSoldiersToPlace"], -1)
+                    return state
 
-    # def succ_phase2_rival(self,state):
+    def succ_phase2_player(self, state):
+        for soldier in range(9):
+            soldierPos = state["SoldierPositions"][soldier]
+            if soldierPos >= 0:
+                for pos in self.directions[soldierPos]:
+                    if state["Board"][pos] == 0:
+                        state["PlayerPositions"][soldierPos] = pos
+                        state["Board"][soldierPos] = 0
+                        state["Board"][pos] = 1
+                        # check incomplete mills
+                        if self.is_mill(pos, state["Board"]):
+                            for rival in range(9 - state["RivalSoldiersToPlace"]):
+                                if state["RivalPositions"][rival] >= 0:
+                                    tmp = state["RivalPositions"][rival]
+                                    state["Board"][tmp] = 0
+                                    state["RivalPositions"][rival] = -1
+                                    state["RivalSoldiersRemaining"] -= 1
+                                    # check incomplete mills
+                                    state["Direction"] = (pos, soldier, tmp)
+                                    return state
+                        else:
+                            state["Direction"] = (pos, soldier, -1)
+                            return state
+
+    def succ_phase2_rival(self,state):
+        for soldier in range(9):
+            soldierPos = state["RivalPositions"][soldier]
+            if soldierPos >= 0:
+                for pos in self.directions[soldierPos]:
+                    if state["Board"][pos] == 0:
+                        state["RivalPositions"][soldierPos] = pos
+                        state["Board"][soldierPos] = 0
+                        state["Board"][pos] = 2
+                        # check incomplete mills
+                        if self.is_mill(pos, state["Board"]):
+                            for player in range(9 - state["PlayerSoldiersToPlace"]):
+                                if state["PlayerPositions"][player] >= 0:
+                                    tmp = state["PlayerPositions"][player]
+                                    state["Board"][tmp] = 0
+                                    state["PlayerPositions"][player] = -1
+                                    state["PlayerSoldiersRemaining"] -= 1
+                                    # check incomplete mills
+                                    state["Direction"] = (pos, soldier, tmp)
+                                    return state
+                        else:
+                            state["Direction"] = (pos, soldier, -1)
+                            return state
 
     ########## helper functions for AlphaBeta algorithm ##########
     # TODO: add here the utility, succ, an
-    def goal(self,state):
-        player_soldiers_remaining = state[6]
-        rival_soldiers_remaining = state[7]
-
-        if player_soldiers_remaining < 3 or rival_soldiers_remaining < 3:
+    def goal(self, state):
+        if state["PlayerSoldiersRemain"] < 3 or state["RivalSoldiersRemain"] < 3:
             return True
         return False
 
     def succ(self, state):
-        turn, board, player_positions, rival_positions, player_soldiers_to_place, rival_soldiers_to_place, \
-            player_soldiers_remaining, rival_soldiers_remaining, player_incomplete_mills, rival_incomplete_mills = \
-            self.state_parser(state)
-
-        if turn:
-            if player_soldiers_to_place > 0:
-                for pos in range(24):
-                    if board[pos] == 0:
-                        board[pos] = 1
-                        player_positions[9-player_soldiers_to_place] = pos
-                        player_soldiers_to_place -= 1
-                        #check incomplete mills
-                        if self.is_mill(pos, board):
-                            for rival in range(9-rival_soldiers_to_place):
-                                if rival_positions[rival] >= 0:
-                                    board[rival_positions[rival]] = 0
-                                    rival_soldiers_remaining -= 1
-                                    #check incomplete mills
-                                    return [not turn, board, player_positions, rival_positions, player_soldiers_to_place
-                                        , rival_soldiers_to_place, player_soldiers_remaining, rival_soldiers_remaining,
-                                            player_incomplete_mills, rival_incomplete_mills]
-                        else:
-                            return [not turn, board, player_positions, rival_positions, player_soldiers_to_place,
-                                    rival_soldiers_to_place, player_soldiers_remaining, rival_soldiers_remaining,
-                                    player_incomplete_mills, rival_incomplete_mills]
+        if state["Turn"]:
+            state["Turn"] = not state["Turn"]
+            if state["PlayerSoldiersToPlace"] > 0:
+                return self.succ_phase1_player(state)
             else:
-                for soldier in player_positions:
-                    if soldier >= 0:
-                        for pos in self.directions[soldier]:
-                            if board[pos] == 0:
-                                player_positions[soldier] = pos
-                                #check incomplete mills
-                                if self.is_mill(pos, board):
-                                    for rival in range(9 - rival_soldiers_to_place):
-                                        if rival_positions[rival] >= 0:
-                                            board[rival_positions[rival]] = 0
-                                            rival_soldiers_remaining -= 1
-                                            # check incomplete mills
-                                            return [not turn, board, player_positions, rival_positions,
-                                                    player_soldiers_to_place, rival_soldiers_to_place,
-                                                    player_soldiers_remaining, rival_soldiers_remaining,
-                                                    player_incomplete_mills, rival_incomplete_mills]
-                                else:
-                                    return [not turn, board, player_positions, rival_positions,
-                                            player_soldiers_to_place, rival_soldiers_to_place, player_soldiers_remaining
-                                        , rival_soldiers_remaining, player_incomplete_mills, rival_incomplete_mills]
+                return self.succ_phase2_player(state)
         else:
-            if rival_soldiers_to_place > 0:
-                for pos in range(24):
-                    if board[pos] == 0:
-                        board[pos] = 1
-                        rival_positions[9-rival_soldiers_to_place] = pos
-                        rival_soldiers_to_place -= 1
-                        #check incomplete mills
-                        if self.is_mill(pos, board):
-                            for player in range(9-player_soldiers_to_place):
-                                if player_positions[player] >= 0:
-                                    board[player_positions[player]] = 0
-                                    player_soldiers_remaining -= 1
-                                    #check incomplete mills
-                                    return [not turn, board, player_positions, rival_positions, player_soldiers_to_place
-                                        , rival_soldiers_to_place, player_soldiers_remaining, rival_soldiers_remaining,
-                                            player_incomplete_mills, rival_incomplete_mills]
-                        else:
-                            return [not turn, board, player_positions, rival_positions, player_soldiers_to_place,
-                                    rival_soldiers_to_place, player_soldiers_remaining, rival_soldiers_remaining,
-                                    player_incomplete_mills, rival_incomplete_mills]
+            state["Turn"] = not state["Turn"]
+            if state["RivalSoldiersToPlace"] > 0:
+                return self.succ_phase1_rival(state)
             else:
-                for soldier in rival_positions:
-                    if soldier >= 0:
-                        for pos in self.directions[soldier]:
-                            if board[pos] == 0:
-                                rival_positions[soldier] = pos
-                                #check incomplete mills
-                                if self.is_mill(pos, board):
-                                    for player in range(9 - player_soldiers_to_place):
-                                        if player_positions[player] >= 0:
-                                            board[player_positions[player]] = 0
-                                            player_soldiers_remaining -= 1
-                                            # check incomplete mills
-                                            return [not turn, board, player_positions, rival_positions,
-                                                    player_soldiers_to_place
-                                                , rival_soldiers_to_place, player_soldiers_remaining,
-                                                    rival_soldiers_remaining,
-                                                    player_incomplete_mills, rival_incomplete_mills]
-                                else:
-                                    return [not turn, board, player_positions, rival_positions,
-                                            player_soldiers_to_place,
-                                            rival_soldiers_to_place, player_soldiers_remaining,
-                                            rival_soldiers_remaining,
-                                            player_incomplete_mills, rival_incomplete_mills]
+                return self.succ_phase2_rival(state)
 
     def utility(self, state):
-        player_soldiers_remaining = state[6]
-        rival_soldiers_remaining = state[7]
-        player_incomplete_mills = state[8]
-        rival_incomplete_mills = state[9]
-
-        if player_soldiers_remaining < 3:
+        if state["PlayerSoldiersRemain"] < 3:
             return -30
-        if rival_soldiers_remaining < 3:
+        if state["RivalSoldiersRemain"] < 3:
             return 30
 
-        return (player_soldiers_remaining - rival_soldiers_remaining) * 2 + \
-               (player_incomplete_mills - rival_incomplete_mills)
-
-
+        return (state["PlayerSoldiersRemain"] - state["RivalSoldiersRemain"]) * 2 + \
+               (state["PlayerIncompMills"] - state["RivalIncompMills"])
     #state is a list [turn, board, player soldiers, rival soldiers, player incomplete mills, rival incomplete mills]
