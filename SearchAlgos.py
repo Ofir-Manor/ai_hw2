@@ -37,7 +37,7 @@ class MiniMax(SearchAlgos):
         """
         turn = state["Turn"]
         if turn == maximizing_player:
-            direction = state["Deirection"]
+            direction = state["Direction"]
         else:
             direction = None
         if self.goal(state) or depth == 0:

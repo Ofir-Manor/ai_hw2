@@ -2,7 +2,9 @@
 Your players classes must inherit from this.
 """
 import utils
-import  numpy as np
+import numpy as np
+
+
 class AbstractPlayer:
     """Your player must inherit from this class.
     Your player class name must be 'Player', as in the given examples (SimplePlayer, LivePlayer).
@@ -48,6 +50,7 @@ class AbstractPlayer:
     def is_player(self, player, pos1, pos2, board=None):
         """
         Function to check if 2 positions have the player on them
+        :param board:
         :param player: 1/2
         :param pos1: position
         :param pos2: position
@@ -118,16 +121,15 @@ class AbstractPlayer:
         else:
             return False
 
-    def is_incomplete_mill(self, position, board=None):
+    def incomplete_mill_diff(self, position, player, add, board=None):
+        # only use after the player is not represented on the board
         if board is None:
             board = self.board
 
         if position < 0 or position > 23:
-            return False
-        p = int(board[position])
+            return -5 #maybe some error code
 
-        incomplete_mills = 0
-
+        diff = 0
         adjacent_mills = [
             [[1, 2], [3, 5]],
             [[0, 2], [9, 17]],
@@ -160,7 +162,47 @@ class AbstractPlayer:
         incomplete_mill_pos3 = adjacent_mills[position][1][0]
         incomplete_mill_pos4 = adjacent_mills[position][1][1]
 
-        incomplete_mill1 = (board[incomplete_mill_pos1] == p + board[incomplete_mill_pos2] == p) == 1
-        incomplete_mill2 = (board[incomplete_mill_pos3] == p + board[incomplete_mill_pos4] == p) == 1
+        if add:
+            incomplete_mill_pre1 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
+            incomplete_mill_pre2 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
+            sum_incomplete_mill_pre = incomplete_mill_pre1 + incomplete_mill_pre2
+            incomplete_mill_post1 = ((board[incomplete_mill_pos1] == player and board[incomplete_mill_pos2] == 0) or
+                                     (board[incomplete_mill_pos1] == 0 and board[incomplete_mill_pos2] == player))
+            incomplete_mill_post2 = ((board[incomplete_mill_pos3] == player and board[incomplete_mill_pos4] == 0) or
+                                     (board[incomplete_mill_pos3] == 0 and board[incomplete_mill_pos4] == player))
+            sum_incomplete_mill_post = incomplete_mill_post1 + incomplete_mill_post2
+            diff = sum_incomplete_mill_post - sum_incomplete_mill_pre
 
-        return incomplete_mill1 + incomplete_mill2
+        if not add:
+            incomplete_mill_pre1 = ((board[incomplete_mill_pos1] == player and board[incomplete_mill_pos2] == 0) or
+                                    (board[incomplete_mill_pos1] == 0 and board[incomplete_mill_pos2] == player))
+            incomplete_mill_pre2 = ((board[incomplete_mill_pos3] == player and board[incomplete_mill_pos4] == 0) or
+                                    (board[incomplete_mill_pos3] == 0 and board[incomplete_mill_pos4] == player))
+            sum_incomplete_mill_pre = incomplete_mill_pre1 + incomplete_mill_pre2
+            incomplete_mill_post1 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
+            incomplete_mill_post2 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
+            sum_incomplete_mill_post = incomplete_mill_post1 + incomplete_mill_post2
+            diff = sum_incomplete_mill_post - sum_incomplete_mill_pre
+
+        return diff
+
+
+class State:
+    def __init__(self):
+        self.turn = True
+        self.board = None
+        self.playerSoldiersToPlace = 9
+        self.rivalSoldiersToPlace = 9
+        self.playerSoldiersRemaining = 0
+        self.rivalSoldiersRemaining = 0
+        self.playerIncompleteMills = 0
+        self.rivalIncompleteMills = 0
+        self.playerPositions = np.empty(9, dtype=int)
+        self.rivalPositions = np.empty(9, dtype=int)
+        self.direction = None
+
+        for i in self.playerPositions:
+            self.playerPositions[i] = -1
+            self.rivalPositions[i] = -1
+
+
