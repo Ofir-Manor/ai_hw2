@@ -3,6 +3,7 @@ Your players classes must inherit from this.
 """
 import utils
 import numpy as np
+import copy
 
 
 class AbstractPlayer:
@@ -137,7 +138,7 @@ class AbstractPlayer:
             [[0, 5], [11, 19]],
             [[2, 7], [12, 20]],
             [[0, 3], [6, 7]],
-            [[5, 7], 14, 22],
+            [[5, 7], [14, 22]],
             [[2, 4], [5, 6]],
             [[9, 10], [11, 13]],
             [[8, 10], [1, 17]],
@@ -186,6 +187,21 @@ class AbstractPlayer:
 
         return diff
 
+    def player_cannot_move(self, state):
+        player_can_move = False
+        rival_can_move = False
+        for pos_player, pos_rival in zip(state.playerPositions, state.rivalPositions):
+            if pos_player >= 0:
+                for next_player_pos in self.directions(pos_player):
+                    if state.board[next_player_pos] == 0:
+                        player_can_move = True
+            if pos_rival >= 0:
+                for next_rival_pos in self.directions(pos_rival):
+                    if state.board[next_rival_pos] == 0:
+                        rival_can_move = True
+
+        return player_can_move, rival_can_move
+
 
 class State:
     def __init__(self):
@@ -197,12 +213,23 @@ class State:
         self.rivalSoldiersRemaining = 0
         self.playerIncompleteMills = 0
         self.rivalIncompleteMills = 0
-        self.playerPositions = np.empty(9, dtype=int)
-        self.rivalPositions = np.empty(9, dtype=int)
+        self.playerPositions = np.full(9, -1)
+        self.rivalPositions = np.full(9, -1)
         self.direction = None
 
-        for i in self.playerPositions:
-            self.playerPositions[i] = -1
-            self.rivalPositions[i] = -1
+    def __copy__(self):
+        copy_state = State()
+        copy_state.turn = self.turn
+        copy_state.board = np.copy(self.board)
+        copy_state.playerSoldiersToPlace = self.playerSoldiersToPlace
+        copy_state.rivalSoldiersToPlace = self.rivalSoldiersToPlace
+        copy_state.playerSoldiersRemaining = self.playerSoldiersRemaining
+        copy_state.rivalSoldiersRemaining = self.rivalSoldiersRemaining
+        copy_state.playerIncompleteMills = self.playerIncompleteMills
+        copy_state.rivalIncompleteMills = self.playerIncompleteMills
+        copy_state.playerPositions = np.copy(self.playerPositions)
+        copy_state.rivalPositions = np.copy(self.rivalPositions)
+        copy_state.direction = self.direction
 
+        return copy_state
 

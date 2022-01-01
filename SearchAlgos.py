@@ -35,14 +35,16 @@ class MiniMax(SearchAlgos):
         :param maximizing_player: Whether this is a max node (True) or a min node (False).
         :return: A tuple: (The min max algorithm value, The direction in case of max node or None in min mode)
         """
-        turn = state["Turn"]
-        if turn == maximizing_player:
-            direction = state["Direction"]
-        else:
-            direction = None
+        turn = state.turn
+        #if turn == maximizing_player:
+        #    direction = state.direction
+        #else:
+        #    direction = None
         if self.goal(state) or depth == 0:
-            return self.utility(state, maximizing_player), direction  #need the move
+            return self.utility(state), state.direction
         children = self.succ(state)
+        if len(children) == 0:
+            print("How did I get here")
         if turn == maximizing_player:
             currMax = -np.inf
             currV = None
@@ -62,7 +64,7 @@ class MiniMax(SearchAlgos):
                     currV = v
             return currV
         #TODO: erase the following line and implement this function.
-        raise NotImplementedError
+        # raise NotImplementedError
 
 
 
