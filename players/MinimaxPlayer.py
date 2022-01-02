@@ -48,18 +48,18 @@ class Player(AbstractPlayer):
             d += 1
             end_time = time.time()
             turn_time += end_time - start_time
-            if turn_time > time_limit/(24*24):
+            if turn_time > time_limit/(24*9):
                 break
 
+        print(f"The move is {move}")
+        print(f"The current players to place is {self.currState.playerSoldiersToPlace} The current rivals to place is {self.currState.rivalSoldiersToPlace}")
+        print(f"The rival positions are {self.currState.rivalPositions}")
+        print(f"the amount of player moves is {self.currState.playerAvailableMoves} The amout of rival moves is {self.currState.rivalAvailableMoves}")
         self.currState.board[self.currState.playerPositions[move[1]]] = 0
         self.board[self.currState.playerPositions[move[1]]] = 0
         if self.currState.playerSoldiersToPlace > 0:
             self.currState.playerSoldiersRemaining += 1
             self.currState.playerSoldiersToPlace -= 1
-
-        self.currState.playerIncompleteMills += self.incomplete_mill_diff(
-            position=self.currState.playerPositions[move[1]], player=1, add=False)
-        self.currState.playerIncompleteMills += self.incomplete_mill_diff(position=move[0], player=1, add=True)
 
         self.currState.board[move[0]] = 1
         self.board[move[0]] = 1
@@ -67,13 +67,15 @@ class Player(AbstractPlayer):
         if move[2] != -1:
             self.currState.rivalSoldiersRemaining -= 1
             self.currState.board[move[2]] = 0
-            self.currState.rivalIncompleteMills += self.incomplete_mill_diff(position=move[2], player=2, add=False)
+
             for rival, pos in enumerate(self.currState.rivalPositions):
                 if pos == move[2]:
-                    self.currState.rivalPositions[rival] = -1
+                    self.currState.rivalPositions[rival] = -2
+                    break
 
         self.currState.turn = False
-        utils.printBoard(self.currState.board)
+        self.currState.playerIncompleteMills, self.currState.playerAvailableMoves, self.currState.rivalIncompleteMills,\
+            self.currState.rivalAvailableMoves = self.moves_and_incomp_mills_calc(state=self.currState)
         return move
         #TODO: erase the following line and implement this function.
         # raise NotImplementedError
@@ -90,23 +92,23 @@ class Player(AbstractPlayer):
             self.currState.rivalSoldiersToPlace -= 1
         self.board[self.currState.rivalPositions[move[1]]] = 0
 
-        self.currState.rivalIncompleteMills += self.incomplete_mill_diff(
-            position=self.currState.rivalPositions[move[1]], player=2, add=False)
-        self.currState.rivalIncompleteMills += self.incomplete_mill_diff(position=move[0], player=2, add=True)
-
         self.currState.board[move[0]] = 2
         self.currState.rivalPositions[move[1]] = move[0]
         if move[2] != -1:
             self.currState.playerSoldiersRemaining -= 1
             self.currState.board[move[2]] = 0
-            self.currState.playerIncompleteMills += self.incomplete_mill_diff(position=move[2], player=1,
-                                                                                        add=False)
             for player, pos in enumerate(self.currState.playerPositions):
                 if pos == move[2]:
-                    self.currState.playerPositions[player] = -1
-
+                    self.currState.playerPositions[player] = -2
 
         self.currState.turn = True
+        self.currState.playerIncompleteMills, self.currState.playerAvailableMoves, self.currState.rivalIncompleteMills,\
+            self.currState.rivalAvailableMoves = self.moves_and_incomp_mills_calc(state=self.currState)
+        print(
+            f"The current players to place is {self.currState.playerSoldiersToPlace} The current rivals to place is {self.currState.rivalSoldiersToPlace}")
+        print(
+            f"the amount of player moves is {self.currState.playerAvailableMoves} The amout of rival moves is {self.currState.rivalAvailableMoves}")
+
         # TODO: erase the following line and implement this function.
         #raise NotImplementedError
 
@@ -122,29 +124,33 @@ class Player(AbstractPlayer):
             next_state.turn = not next_state.turn
             soldier_to_place = 9 - next_state.playerSoldiersToPlace
             if next_state.board[pos] == 0:
-                next_state.playerIncompleteMills += self.incomplete_mill_diff(position=pos, player=1, add=True,
-                                                                              board=next_state.board)
                 next_state.board[pos] = 1
                 next_state.playerPositions[soldier_to_place] = pos
                 next_state.playerSoldiersToPlace -= 1
-
                 next_state.playerSoldiersRemaining += 1
                 if self.is_mill(position=pos, board=next_state.board):
                     for rival in range(9 - next_state.rivalSoldiersToPlace):
                         if next_state.rivalPositions[rival] >= 0:
                             tmp = next_state.rivalPositions[rival]
                             next_state.board[tmp] = 0
-                            next_state.rivalIncompleteMills += self.incomplete_mill_diff(position=tmp, player=2,
-                                                                                         add=False, board=next_state.board)
-                            next_state.rivalPositions[rival] = -1
+
+                            next_state.rivalPositions[rival] = -2
                             next_state.rivalSoldiersRemaining -= 1
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldier_to_place, tmp)
+                            next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                                next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
                 else:
                     if next_state.direction is None:
                         next_state.direction = (pos, soldier_to_place, -1)
+                    next_state.playerIncompleteMills, next_state.playerAvailableMoves,\
+                        next_state.rivalIncompleteMills, next_state.rivalAvailableMoves =\
+                        self.moves_and_incomp_mills_calc(state=next_state)
                     states.append(next_state)
+        if len(states) == 0:
+            print("I have a problem in player phase 1")
         return states
 
     def succ_phase1_rival(self, state):
@@ -152,10 +158,9 @@ class Player(AbstractPlayer):
         for pos in range(24):
             next_state = state.__copy__()
             next_state.turn = not next_state.turn
-            soldierToPlace = 9 - next_state.rivalSoldiersToPlace
+            soldierToPlace = np.where(next_state.rivalPositions == -1)
             if next_state.board[pos] == 0:
-                next_state.rivalIncompleteMills += self.incomplete_mill_diff(position=pos, player=2, add=True,
-                                                                             board=next_state.board)
+
                 next_state.board[pos] = 2
                 next_state.rivalPositions[soldierToPlace] = pos
                 next_state.rivalSoldiersToPlace -= 1
@@ -165,18 +170,23 @@ class Player(AbstractPlayer):
                         if next_state.playerPositions[player] >= 0:
                             tmp = next_state.playerPositions[player]
                             next_state.board[tmp] = 0
-                            next_state.playerIncompleteMills += self.incomplete_mill_diff(position=tmp, player=1,
-                                                                                          add=False,
-                                                                                          board=next_state.board)
-                            next_state.playerPositions[player] = -1
+                            next_state.playerPositions[player] = -2
                             next_state.playerSoldiersRemaining -= 1
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldierToPlace, tmp)
+                            next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                                next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
                 else:
                     if next_state.direction is None:
                         next_state.direction = (pos, soldierToPlace, -1)
+                    next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                        next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                        self.moves_and_incomp_mills_calc(state=next_state)
                     states.append(next_state)
+        if len(states) == 0:
+            print("I have a problem in rival phase 1")
         return states
 
     def succ_phase2_player(self, state):
@@ -190,27 +200,32 @@ class Player(AbstractPlayer):
                     if next_state.board[pos] == 0:
                         next_state.playerPositions[soldier] = pos
                         next_state.board[soldierPos] = 0
-                        next_state.playerIncompleteMills += self.incomplete_mill_diff(position=soldierPos, player=1,
-                                                                                      add=False, board=next_state.board)
-                        next_state.playerIncompleteMills += self.incomplete_mill_diff(pos, 1, True)
+
                         next_state.board[pos] = 1
                         if self.is_mill(pos, next_state.board):
                             for rival in range(9 - next_state.rivalSoldiersToPlace):
                                 if next_state.rivalPositions[rival] >= 0:
                                     tmp = next_state.rivalPositions[rival]
                                     next_state.board[tmp] = 0
-                                    next_state.rivalIncompleteMills += self.incomplete_mill_diff(position=tmp, player=2,
-                                                                                                 add=False,
-                                                                                                 board=next_state.board)
-                                    next_state.rivalPositions[rival] = -1
+                                    next_state.rivalPositions[rival] = -2
                                     next_state.rivalSoldiersRemaining -= 1
                                     if next_state.direction is None:
                                         next_state.direction = (pos, soldier, tmp)
+
+                                    next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                                        next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                        self.moves_and_incomp_mills_calc(state=next_state)
                                     states.append(next_state)
                         else:
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldier, -1)
+
+                            next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                                next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
+        if len(states) == 0:
+            print("I have a problem in player phase 2")
         return states
 
     def succ_phase2_rival(self, state):
@@ -224,30 +239,33 @@ class Player(AbstractPlayer):
                     if next_state.board[pos] == 0:
                         next_state.rivalPositions[soldier] = pos
                         next_state.board[soldierPos] = 0
-                        next_state.rivalIncompleteMills += self.incomplete_mill_diff(position=soldierPos, player=2,
-                                                                                     add=False, board=next_state.board)
-                        next_state.rivalIncompleteMills += self.incomplete_mill_diff(position=pos, player=2, add=True,
-                                                                                     board=next_state.board)
+
                         next_state.board[pos] = 2
                         if self.is_mill(pos, next_state.board):
                             for player in range(9 - next_state.playerSoldiersToPlace):
                                 if next_state.playerPositions[player] >= 0:
                                     tmp = next_state.playerPositions[player]
                                     next_state.board[tmp] = 0
-                                    next_state.playerIncompleteMills += self.incomplete_mill_diff(position=tmp, player=1,
-                                                                                                  add=False,
-                                                                                                  board=next_state.board)
-                                    next_state.playerPositions[player] = -1
+
+                                    next_state.playerPositions[player] = -2
                                     next_state.playerSoldiersRemaining -= 1
                                     if next_state.direction is None:
                                         next_state.direction = (pos, soldier, tmp)
+
+                                    next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                                        next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                        self.moves_and_incomp_mills_calc(state=next_state)
                                     states.append(next_state)
                         else:
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldier, -1)
+
+                            next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
+                            next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
+                                self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
         if len(states) == 0:
-            utils.printBoard(state.board)
+            print("I have a problem in rival phase 2")
         return states
 
     ########## helper functions for AlphaBeta algorithm ##########
@@ -255,7 +273,7 @@ class Player(AbstractPlayer):
     def goal(self, state):
         if (state.rivalSoldiersToPlace == 0 and state.playerSoldiersToPlace == 0) and \
                 ((state.playerSoldiersRemaining < 3 or state.rivalSoldiersRemaining < 3) or
-                 (self.player_cannot_move(state) != (True, True))):
+                 (state.playerAvailableMoves == 0 or state.rivalAvailableMoves == 0)):
             return True
         return False
 
@@ -272,10 +290,10 @@ class Player(AbstractPlayer):
                 return self.succ_phase2_rival(state)
 
     def utility(self, state):
-        if state.playerSoldiersRemaining < 3 or self.player_cannot_move(state)[0] is False:
+        if state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0:
             return -30
-        if state.rivalSoldiersRemaining < 3 or self.player_cannot_move(state)[1] is False:
+        if state.rivalSoldiersRemaining < 3 or state.rivalAvailableMoves == 0:
             return 30
 
-        return (state.playerSoldiersRemaining - state.rivalSoldiersRemaining) * 2 + \
+        return (state.playerSoldiersRemaining - state.rivalSoldiersRemaining) * 4 + \
                (state.playerIncompleteMills - state.rivalIncompleteMills)

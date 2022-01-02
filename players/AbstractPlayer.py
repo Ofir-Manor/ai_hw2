@@ -122,7 +122,7 @@ class AbstractPlayer:
         else:
             return False
 
-    def incomplete_mill_diff(self, position, player, add, board=None):
+    def incomplete_mill_count(self, position, player, board=None):
         # only use after the player is not represented on the board
         if board is None:
             board = self.board
@@ -163,44 +163,36 @@ class AbstractPlayer:
         incomplete_mill_pos3 = adjacent_mills[position][1][0]
         incomplete_mill_pos4 = adjacent_mills[position][1][1]
 
-        if add:
-            incomplete_mill_pre1 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
-            incomplete_mill_pre2 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
-            sum_incomplete_mill_pre = incomplete_mill_pre1 + incomplete_mill_pre2
-            incomplete_mill_post1 = ((board[incomplete_mill_pos1] == player and board[incomplete_mill_pos2] == 0) or
-                                     (board[incomplete_mill_pos1] == 0 and board[incomplete_mill_pos2] == player))
-            incomplete_mill_post2 = ((board[incomplete_mill_pos3] == player and board[incomplete_mill_pos4] == 0) or
-                                     (board[incomplete_mill_pos3] == 0 and board[incomplete_mill_pos4] == player))
-            sum_incomplete_mill_post = incomplete_mill_post1 + incomplete_mill_post2
-            diff = sum_incomplete_mill_post - sum_incomplete_mill_pre
+        incomplete_mill1 = ((board[incomplete_mill_pos1] == player and board[incomplete_mill_pos2] == 0) or
+                            (board[incomplete_mill_pos1] == 0 and board[incomplete_mill_pos2] == player))
+        incomplete_mill2 = ((board[incomplete_mill_pos3] == player and board[incomplete_mill_pos4] == 0) or
+                            (board[incomplete_mill_pos3] == 0 and board[incomplete_mill_pos4] == player))
+        return incomplete_mill1 + incomplete_mill2
 
-        if not add:
-            incomplete_mill_pre1 = ((board[incomplete_mill_pos1] == player and board[incomplete_mill_pos2] == 0) or
-                                    (board[incomplete_mill_pos1] == 0 and board[incomplete_mill_pos2] == player))
-            incomplete_mill_pre2 = ((board[incomplete_mill_pos3] == player and board[incomplete_mill_pos4] == 0) or
-                                    (board[incomplete_mill_pos3] == 0 and board[incomplete_mill_pos4] == player))
-            sum_incomplete_mill_pre = incomplete_mill_pre1 + incomplete_mill_pre2
-            incomplete_mill_post1 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
-            incomplete_mill_post2 = self.is_player(player, incomplete_mill_pos1, incomplete_mill_pos2, board)
-            sum_incomplete_mill_post = incomplete_mill_post1 + incomplete_mill_post2
-            diff = sum_incomplete_mill_post - sum_incomplete_mill_pre
+    def player_pos_moves(self, pos, board=None):
+        if board is None:
+            board = self.board
+        possible_moves = 0
+        for next_moves in self.directions(pos):
+            if board[next_moves] == 0:
+                possible_moves += 1
 
-        return diff
+        return possible_moves
 
-    def player_cannot_move(self, state):
-        player_can_move = False
-        rival_can_move = False
-        for pos_player, pos_rival in zip(state.playerPositions, state.rivalPositions):
-            if pos_player >= 0:
-                for next_player_pos in self.directions(pos_player):
-                    if state.board[next_player_pos] == 0:
-                        player_can_move = True
-            if pos_rival >= 0:
-                for next_rival_pos in self.directions(pos_rival):
-                    if state.board[next_rival_pos] == 0:
-                        rival_can_move = True
+    def moves_and_incomp_mills_calc(self, state):
+        player_incomp_mills = 0
+        player_avail_moves = 0
+        rival_incomp_mills = 0
+        rival_avail_moves = 0
+        for player_pos, rival_pos in zip(state.playerPositions, state.rivalPositions):
+            if player_pos >= 0:
+                player_avail_moves += self.player_pos_moves(pos=player_pos, board=state.board)
+                player_incomp_mills += self.incomplete_mill_count(position=player_pos, player=1, board=state.board)
+            if rival_pos >= 0:
+                rival_avail_moves += self.player_pos_moves(pos=rival_pos, board=state.board)
+                rival_incomp_mills += self.incomplete_mill_count(position=rival_pos, player=2, board=state.board)
 
-        return player_can_move, rival_can_move
+        return player_incomp_mills/2, player_avail_moves, rival_incomp_mills/2, rival_avail_moves
 
 
 class State:
@@ -213,6 +205,8 @@ class State:
         self.rivalSoldiersRemaining = 0
         self.playerIncompleteMills = 0
         self.rivalIncompleteMills = 0
+        self.playerAvailableMoves = 0
+        self.rivalAvailableMoves = 0
         self.playerPositions = np.full(9, -1)
         self.rivalPositions = np.full(9, -1)
         self.direction = None
@@ -227,6 +221,8 @@ class State:
         copy_state.rivalSoldiersRemaining = self.rivalSoldiersRemaining
         copy_state.playerIncompleteMills = self.playerIncompleteMills
         copy_state.rivalIncompleteMills = self.playerIncompleteMills
+        copy_state.playerAvailableMoves = self.playerAvailableMoves
+        copy_state.rivalAvailableMoves = self.rivalAvailableMoves
         copy_state.playerPositions = np.copy(self.playerPositions)
         copy_state.rivalPositions = np.copy(self.rivalPositions)
         copy_state.direction = self.direction
