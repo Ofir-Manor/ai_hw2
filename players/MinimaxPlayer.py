@@ -39,8 +39,13 @@ class Player(AbstractPlayer):
         output:
             - direction: tuple, specifing the Player's movement
         """
+
+        if self.currState.playerSoldiersToPlace > 0:
+            time_divisor = ((24 - (self.currState.playerSoldiersRemaining + self.currState.rivalSoldiersRemaining)) *
+                            (self.currState.rivalSoldiersRemaining+1)*1.5)
+        else:
+            time_divisor = (self.currState.playerAvailableMoves*(self.currState.rivalSoldiersRemaining+1)*1.5)
         d = 0
-        move = None
         turn_time = 0
         while True:
             start_time = time.time()
@@ -48,13 +53,9 @@ class Player(AbstractPlayer):
             d += 1
             end_time = time.time()
             turn_time += end_time - start_time
-            if turn_time > time_limit/(24*9):
+            if turn_time > time_limit/time_divisor or value == 500:
                 break
 
-        print(f"The move is {move}")
-        print(f"The current players to place is {self.currState.playerSoldiersToPlace} The current rivals to place is {self.currState.rivalSoldiersToPlace}")
-        print(f"The rival positions are {self.currState.rivalPositions}")
-        print(f"the amount of player moves is {self.currState.playerAvailableMoves} The amout of rival moves is {self.currState.rivalAvailableMoves}")
         self.currState.board[self.currState.playerPositions[move[1]]] = 0
         self.board[self.currState.playerPositions[move[1]]] = 0
         if self.currState.playerSoldiersToPlace > 0:
@@ -104,10 +105,6 @@ class Player(AbstractPlayer):
         self.currState.turn = True
         self.currState.playerIncompleteMills, self.currState.playerAvailableMoves, self.currState.rivalIncompleteMills,\
             self.currState.rivalAvailableMoves = self.moves_and_incomp_mills_calc(state=self.currState)
-        print(
-            f"The current players to place is {self.currState.playerSoldiersToPlace} The current rivals to place is {self.currState.rivalSoldiersToPlace}")
-        print(
-            f"the amount of player moves is {self.currState.playerAvailableMoves} The amout of rival moves is {self.currState.rivalAvailableMoves}")
 
         # TODO: erase the following line and implement this function.
         #raise NotImplementedError
@@ -149,8 +146,6 @@ class Player(AbstractPlayer):
                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves =\
                         self.moves_and_incomp_mills_calc(state=next_state)
                     states.append(next_state)
-        if len(states) == 0:
-            print("I have a problem in player phase 1")
         return states
 
     def succ_phase1_rival(self, state):
@@ -185,8 +180,6 @@ class Player(AbstractPlayer):
                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                         self.moves_and_incomp_mills_calc(state=next_state)
                     states.append(next_state)
-        if len(states) == 0:
-            print("I have a problem in rival phase 1")
         return states
 
     def succ_phase2_player(self, state):
@@ -224,8 +217,6 @@ class Player(AbstractPlayer):
                                 next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
-        if len(states) == 0:
-            print("I have a problem in player phase 2")
         return states
 
     def succ_phase2_rival(self, state):
@@ -264,8 +255,6 @@ class Player(AbstractPlayer):
                             next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
                             states.append(next_state)
-        if len(states) == 0:
-            print("I have a problem in rival phase 2")
         return states
 
     ########## helper functions for AlphaBeta algorithm ##########
@@ -290,10 +279,10 @@ class Player(AbstractPlayer):
                 return self.succ_phase2_rival(state)
 
     def utility(self, state):
-        if state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0:
-            return -30
-        if state.rivalSoldiersRemaining < 3 or state.rivalAvailableMoves == 0:
-            return 30
+        #if self.goal(state) and (state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0):
+        #    return -500
+        if self.goal(state) and (state.rivalSoldiersRemaining < 3 or state.rivalAvailableMoves == 0):
+            return 500
 
-        return (state.playerSoldiersRemaining - state.rivalSoldiersRemaining) * 4 + \
+        return (state.playerSoldiersRemaining - state.rivalSoldiersRemaining) * 10 + \
                (state.playerIncompleteMills - state.rivalIncompleteMills)

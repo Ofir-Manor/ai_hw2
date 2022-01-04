@@ -43,8 +43,6 @@ class MiniMax(SearchAlgos):
         if self.goal(state) or depth == 0:
             return self.utility(state), state.direction
         children = self.succ(state)
-        if len(children) == 0:
-            print("How did I get here")
         if turn == maximizing_player:
             currMax = -np.inf
             currV = None
