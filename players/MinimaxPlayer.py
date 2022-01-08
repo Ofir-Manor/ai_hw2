@@ -56,6 +56,8 @@ class Player(AbstractPlayer):
             if turn_time > time_limit/time_divisor or value == 500:
                 break
 
+        if value == 500:
+            print(f"The move to win is {move} and the d is  {d}")
         self.currState.board[self.currState.playerPositions[move[1]]] = 0
         self.board[self.currState.playerPositions[move[1]]] = 0
         if self.currState.playerSoldiersToPlace > 0:
@@ -116,16 +118,18 @@ class Player(AbstractPlayer):
 
     def succ_phase1_player(self, state):
         states = []
+        next_state = state.__copy__()
+        next_state.turn = not next_state.turn
+        soldier_to_place = 9 - next_state.playerSoldiersToPlace
         for pos in range(24):
-            next_state = state.__copy__()
-            next_state.turn = not next_state.turn
-            soldier_to_place = 9 - next_state.playerSoldiersToPlace
             if next_state.board[pos] == 0:
+                save_state_pre_dir = next_state.__copy__()
                 next_state.board[pos] = 1
                 next_state.playerPositions[soldier_to_place] = pos
                 next_state.playerSoldiersToPlace -= 1
                 next_state.playerSoldiersRemaining += 1
                 if self.is_mill(position=pos, board=next_state.board):
+                    save_state_pre_kill = next_state.__copy__()
                     for rival in range(9 - next_state.rivalSoldiersToPlace):
                         if next_state.rivalPositions[rival] >= 0:
                             tmp = next_state.rivalPositions[rival]
@@ -138,7 +142,9 @@ class Player(AbstractPlayer):
                             next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                                 next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
-                            states.append(next_state)
+                            states.append(next_state.__copy__())
+                            next_state = save_state_pre_kill.__copy__()
+                    next_state = save_state_pre_dir.__copy__()
                 else:
                     if next_state.direction is None:
                         next_state.direction = (pos, soldier_to_place, -1)
@@ -146,21 +152,23 @@ class Player(AbstractPlayer):
                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves =\
                         self.moves_and_incomp_mills_calc(state=next_state)
                     states.append(next_state)
+                    next_state = save_state_pre_dir.__copy__()
         return states
 
     def succ_phase1_rival(self, state):
         states = []
+        next_state = state.__copy__()
+        next_state.turn = not next_state.turn
+        soldierToPlace = np.where(next_state.rivalPositions == -1)
         for pos in range(24):
-            next_state = state.__copy__()
-            next_state.turn = not next_state.turn
-            soldierToPlace = np.where(next_state.rivalPositions == -1)
             if next_state.board[pos] == 0:
-
+                save_state_pre_dir = next_state.__copy__()
                 next_state.board[pos] = 2
                 next_state.rivalPositions[soldierToPlace] = pos
                 next_state.rivalSoldiersToPlace -= 1
                 next_state.rivalSoldiersRemaining += 1
                 if self.is_mill(pos, next_state.board):
+                    save_state_pre_kill = next_state.__copy__()
                     for player in range(9 - next_state.playerSoldiersToPlace):
                         if next_state.playerPositions[player] >= 0:
                             tmp = next_state.playerPositions[player]
@@ -172,23 +180,28 @@ class Player(AbstractPlayer):
                             next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                                 next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
-                            states.append(next_state)
+                            states.append(next_state.__copy__())
+                            next_state = save_state_pre_kill.__copy__()
+                    next_state = save_state_pre_dir.__copy__()
                 else:
                     if next_state.direction is None:
                         next_state.direction = (pos, soldierToPlace, -1)
                     next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                         self.moves_and_incomp_mills_calc(state=next_state)
-                    states.append(next_state)
+                    states.append(next_state.__copy__())
+                    next_state = save_state_pre_dir.__copy__()
         return states
 
     def succ_phase2_player(self, state):
         states = []
+        next_state = state.__copy__()
+        next_state.turn = not next_state.turn
         for soldier in range(9):
-            next_state = state.__copy__()
-            next_state.turn = not next_state.turn
+            save_state_pre_sold = next_state.__copy__()
             soldierPos = next_state.playerPositions[soldier]
             if soldierPos >= 0:
+                save_state_pre_dir = next_state.__copy__()
                 for pos in self.directions(soldierPos):
                     if next_state.board[pos] == 0:
                         next_state.playerPositions[soldier] = pos
@@ -196,8 +209,10 @@ class Player(AbstractPlayer):
 
                         next_state.board[pos] = 1
                         if self.is_mill(pos, next_state.board):
+                            save_state_pre_kill = next_state.__copy__()
                             for rival in range(9 - next_state.rivalSoldiersToPlace):
                                 if next_state.rivalPositions[rival] >= 0:
+
                                     tmp = next_state.rivalPositions[rival]
                                     next_state.board[tmp] = 0
                                     next_state.rivalPositions[rival] = -2
@@ -208,7 +223,9 @@ class Player(AbstractPlayer):
                                     next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                         self.moves_and_incomp_mills_calc(state=next_state)
-                                    states.append(next_state)
+                                    states.append(next_state.__copy__())
+                                    next_state = save_state_pre_kill.__copy__()
+                            next_state = save_state_pre_dir.__copy__()
                         else:
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldier, -1)
@@ -216,16 +233,20 @@ class Player(AbstractPlayer):
                             next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                                 next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
-                            states.append(next_state)
+                            states.append(next_state.__copy__())
+                            next_state = save_state_pre_dir.__copy__()
+            next_state = save_state_pre_sold.__copy__()
         return states
 
     def succ_phase2_rival(self, state):
         states = []
+        next_state = state.__copy__()
+        next_state.turn = not next_state.turn
         for soldier in range(9):
-            next_state = state.__copy__()
-            next_state.turn = not next_state.turn
+            save_state_pre_sold = next_state.__copy__()
             soldierPos = next_state.rivalPositions[soldier]
             if soldierPos >= 0:
+                save_state_pre_dir = next_state.__copy__()
                 for pos in self.directions(soldierPos):
                     if next_state.board[pos] == 0:
                         next_state.rivalPositions[soldier] = pos
@@ -233,6 +254,7 @@ class Player(AbstractPlayer):
 
                         next_state.board[pos] = 2
                         if self.is_mill(pos, next_state.board):
+                            save_state_pre_kill = next_state.__copy__()
                             for player in range(9 - next_state.playerSoldiersToPlace):
                                 if next_state.playerPositions[player] >= 0:
                                     tmp = next_state.playerPositions[player]
@@ -246,7 +268,9 @@ class Player(AbstractPlayer):
                                     next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                                         next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                         self.moves_and_incomp_mills_calc(state=next_state)
-                                    states.append(next_state)
+                                    states.append(next_state.__copy__())
+                                    next_state = save_state_pre_kill.__copy__()
+                            next_state = save_state_pre_dir.__copy__()
                         else:
                             if next_state.direction is None:
                                 next_state.direction = (pos, soldier, -1)
@@ -254,17 +278,17 @@ class Player(AbstractPlayer):
                             next_state.playerIncompleteMills, next_state.playerAvailableMoves, \
                             next_state.rivalIncompleteMills, next_state.rivalAvailableMoves = \
                                 self.moves_and_incomp_mills_calc(state=next_state)
-                            states.append(next_state)
+                            states.append(next_state.__copy__())
+                            next_state = save_state_pre_dir.__copy__()
+            next_state = save_state_pre_sold.__copy__()
         return states
 
     ########## helper functions for AlphaBeta algorithm ##########
     # TODO: add here the utility, succ, an
     def goal(self, state):
-        if (state.rivalSoldiersToPlace == 0 and state.playerSoldiersToPlace == 0) and \
-                ((state.playerSoldiersRemaining < 3 or state.rivalSoldiersRemaining < 3) or
-                 (state.playerAvailableMoves == 0 or state.rivalAvailableMoves == 0)):
-            return True
-        return False
+        return (state.rivalSoldiersToPlace == 0 and state.playerSoldiersToPlace == 0) and \
+                (((state.playerSoldiersRemaining < 3 or state.rivalSoldiersRemaining < 3 or
+                 state.playerAvailableMoves == 0 or state.rivalAvailableMoves == 0)))
 
     def succ(self, state):
         if state.turn:
