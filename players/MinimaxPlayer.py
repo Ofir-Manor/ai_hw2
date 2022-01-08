@@ -32,7 +32,6 @@ class Player(AbstractPlayer):
         # raise NotImplementedError
 
     def make_move(self, time_limit):
-
         """Make move with this Player.
         input:
             - time_limit: float, time limit for a single turn.
@@ -45,7 +44,7 @@ class Player(AbstractPlayer):
                             (self.currState.rivalSoldiersRemaining+1)*1.5)
         else:
             time_divisor = (self.currState.playerAvailableMoves*(self.currState.rivalSoldiersRemaining+1)*1.5)
-        d = 0
+        d = 1
         turn_time = 0
         while True:
             start_time = time.time()
@@ -56,8 +55,6 @@ class Player(AbstractPlayer):
             if turn_time > time_limit/time_divisor or value == 500:
                 break
 
-        if value == 500:
-            print(f"The move to win is {move} and the d is  {d}")
         self.currState.board[self.currState.playerPositions[move[1]]] = 0
         self.board[self.currState.playerPositions[move[1]]] = 0
         if self.currState.playerSoldiersToPlace > 0:
@@ -303,8 +300,8 @@ class Player(AbstractPlayer):
                 return self.succ_phase2_rival(state)
 
     def utility(self, state):
-        #if self.goal(state) and (state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0):
-        #    return -500
+        if self.goal(state) and (state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0):
+            return -500
         if self.goal(state) and (state.rivalSoldiersRemaining < 3 or state.rivalAvailableMoves == 0):
             return 500
 
