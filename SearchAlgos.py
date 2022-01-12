@@ -4,6 +4,7 @@
 #TODO: update ALPHA_VALUE_INIT, BETA_VALUE_INIT in utils
 import time
 import numpy as np
+import math
 ALPHA_VALUE_INIT = -np.inf
 BETA_VALUE_INIT = np.inf  # !!!!!
 
@@ -78,5 +79,31 @@ class AlphaBeta(SearchAlgos):
         :param: beta: beta value
         :return: A tuple: (The min max algorithm value, The direction in case of max node or None in min mode)
         """
-        #TODO: erase the following line and implement this function.
-        raise NotImplementedError
+        turn = state.turn
+        if self.goal(state) or depth == 0:
+            return self.utility(state), state.direction
+        children = self.succ(state)
+        if turn == maximizing_player:
+            currMax = -np.inf
+            currV = None
+            for c in children:
+                v = self.search(c, depth-1, maximizing_player, alpha, beta)
+                if v[0] > currMax:
+                    currMax = v[0]
+                    currV = v
+                alpha = max(currMax, alpha)
+                if currMax >= beta:
+                    return np.inf, state.direction
+            return currV
+        else:
+            currMin = np.inf
+            currV = None
+            for c in children:
+                v = self.search(c, depth-1, maximizing_player)
+                if v[0] < currMin:
+                    currMin = v[0]
+                    currV = v
+                beta = min(currMin, beta)
+                if currMin <= alpha:
+                    return -np.inf, state.direction
+            return currV
