@@ -93,7 +93,7 @@ class AlphaBeta(SearchAlgos):
                     currV = v
                 alpha = max(currMax, alpha)
                 if currMax >= beta:
-                    return np.inf, state.direction
+                    return np.inf, None
             return currV
         else:
             currMin = np.inf
@@ -105,5 +105,5 @@ class AlphaBeta(SearchAlgos):
                     currV = v
                 beta = min(currMin, beta)
                 if currMin <= alpha:
-                    return -np.inf, state.direction
+                    return -np.inf, None
             return currV
