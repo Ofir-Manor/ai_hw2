@@ -288,7 +288,10 @@ class Player(AbstractPlayer):
         return states
 
     def calc_turn_time(self):
-        return self.game_time / (18 - (self.currState.playerSoldiersToPlace+self.currState.rivalSoldiersRemaining))
+        if self.currState.playerSoldiersToPlace > 0:
+            return self.game_time / (12 - self.currState.playerSoldiersToPlace)
+        else:
+            return self.game_time / self.currState.playerAvailableMoves
 
     ########## helper functions for AlphaBeta algorithm ##########
     def goal(self, state):
