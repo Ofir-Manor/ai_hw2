@@ -304,6 +304,21 @@ class Player(AbstractPlayer):
             else:
                 return self.succ_phase2_rival(next_state)
 
+    def diff_mill_count(self, state):
+        count_1 = 0
+        count_2 = 0
+        player_pos = state.playerPositions
+        rival_pos = state.rivalPositions
+        for i in player_pos:
+            if i >= 0:
+                if self.check_next_mill(i, 1, state.board):
+                    count_1 += 1
+        for i in rival_pos:
+            if i >=0:
+                if self.check_next_mill(i, 2, state.board):
+                    count_2 += 1
+        return count_1 - count_2
+
     def utility(self, state):
         if self.goal(state) and (state.playerSoldiersRemaining < 3 or state.playerAvailableMoves == 0):
             return -500
@@ -311,4 +326,4 @@ class Player(AbstractPlayer):
             return 500
 
         return (state.playerSoldiersRemaining - state.rivalSoldiersRemaining) * 10 + \
-               (state.playerIncompleteMills - state.rivalIncompleteMills)
+               (state.playerIncompleteMills - state.rivalIncompleteMills) + self.diff_mill_count(state)
